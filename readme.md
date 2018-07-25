@@ -153,3 +153,71 @@ import pyspark
 * Once familiar with them we ll move on to utilize DataFrame MLib API for Machine Learning
 * After this section we ll have a section for a DataFrame POroject
 * The PRoject will be an analysis of some historical stock data information using all the Spark knowledge from this section to test our ne skills
+
+### Lecture 25 - Spark DataFrame Basics
+
+* we import SparkSession `from pyspark.sql import SparkSession`
+* we start SparkSession by applying it `spark - SparkSession.builder.appName('Basics').getOrCreate()`
+* we read in a dataset (people.json) included in course notes `df = spark.read.json('people.json')` provide the path to the file
+* to show the dataframe we run `df.show()` we note that some data is missing. we have a 3 row dataset of 2 columns 'age' and 'name' with their labels. one age is missing. spark replaces missing data with *null*
+* to see the scema of the dataframe we use `df.printSchema()`. we get the datatype as well
+* to see the column names of the df we use the .column attribute. returns a python list
+* to get statistical summary of the df we use like pandas `df.describe()`. it returns a dataframe. to see it we need to chain .show() method. the info is only for numerical columns
+* in our case the schema is easy to infer as the data is simple. in many case data is complex and we need to define the correct schema
+* to do this first we import the datatypes and objects to use. `from pyspark.sql.types import StructField,StringType,IntegerType,StructType`
+* next we need to create a list of structurefields (name,datatype, nullable)
+```
+data_schema = [
+	StructField('age',IntegerType(),True),
+	StructField('name',StringType(),True),
+]
+```
+* then we set the schema we are expecting from our data `final_struc = StructType(fields=data_schema)`
+* we then use the final_struc as the schema when we parse the file in a dataframe `df = spark.read.json('people.json',schema=final_struc)`
+* if we print the schema of the df `df.printschema()` we see it is as we defined it so we get predictable resutls
+* SPARK is good at infering schemas from data but we have this option when things get nasty
+
+### Lecture 26 - Spark DataFrame Basics Part Two
+
+* if i grabn a column like in a pandas dataframe `df['age']` i get a column object of Column type
+* if i want to get a dtaframe of that single column to work on the data i have to use the .select() method `df.select('age')` to see the data i have to chain the .show() method
+* if i want to see the first two rows in a dataset i use `df.head(2)`. what i get back is a list of row objects. to get the first of the 2 ican use `df.head(2)[0]`
+* The reason that Spark uses special objects for Rows and Columns is because of its ability to read data f4rom distributed sources and then map them out to a single data set
+* if i want to select multiple column we use select passing a list of column names `df.select(['age','name'])`
+* we can create new columns we use .withCoumn() . this method returns a new datarame with anew column ore replacing an existing one. we pass the name of our new column and then a Column object. `df.withColumn('newage',df['age'])` we can do math operations on the Column object `df.withColumn('double_age',df['age']*2)` . the returned datafram is not persistent. we need to assign it to a new var to save it. so it is NOT an *inplace* operation
+* to rename a column we use the withColumn() passing the new name `df.withColumn('age','superage')`
+* We can use pure SQL to interact with the dataframe
+* to use SQL on the datafram we need to register it as a *SQL temporary view* using a special method on the dataframe `df.createOrReplaceTempView('people')` passing the name of the view
+* i can then get the results as a spark dataframe using sql queries `results = spark.sql("SELECT * FROM people")`
+* we can issue more complex queries `spark.sql("SELECT * FROM people WHERE age=30").show()`
+
+### Lecture 27 - Spark DataFrame Basic Operations
+
+* we will now learn how to filter data once we grab them.
+* we import SparkSession `from pyspark.sql import SparkSession`
+* we create a sparksession running instance `spark = SparkSession.builder.appName("Operations").getOrCreate()`
+* we will read in anew file a csv into a dataframe infering the scehma (a csv option) . also we tell it that the first row is the header `df = spark.read.csv('appl_stock.csv',inferSchema=True,header=True)`
+* we print the schema with .printSchema() . we have 7 columns with inof about the apple stock for each date. we cahn .show() the df . it has a lot of rows
+* spark is able to filter out data based on conditions. 
+* spark datarames are built on top of spark sql platform.
+* if we know sql we can quickly grab data using sql commands. 
+* but in this coursw we will use FataFrame methods to operate on data
+* we can use SQL syntax in the filter() method `df.filter("Close < 500").show()` or select from the filetered data chaining .select() method `df.filter("Close<500").select('Open').show()` or passign a list of columns in select
+* we can use python style syntax (like pandas) in filter() instead `df.filter(df['Close'] < 500).show()` or `df.filter(df['Close'] < 500).select('Volume').show()`
+* if want to filter based on multiple conditions i use same python syntax like in pandas dataframes combined conditions. we make use to use parenthesses in subconditions here to avoid py4j (java trnaslation) errors `df.filter( (df["Close"] < 200) & (df['Open'] > 200) ).show()`
+* NOT operator in python syntax is ~ , not ! .`~(df['Open'] < 200)`
+* just showing the filtered results is not always useful. many times we need to work on the data. we use the .collect() old RDD style spark method to make them in-memory lists to work with `result = df.filter(df["Low"] == 197.16).collect()`. what we get back is a list of row objects
+* we can store it in a variable and work on it later on e.g grab the row, make it a dictionary and extract data
+```
+row = result[0]
+row.asDict()['Volume']
+```
+* or itrate through row and get data 
+```
+for item in result[0]:
+    print(item)
+```
+
+### Lecture 27 - GroupBy and Aggregate Operations
+
+* 
