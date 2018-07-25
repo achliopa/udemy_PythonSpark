@@ -220,4 +220,63 @@ for item in result[0]:
 
 ### Lecture 27 - GroupBy and Aggregate Operations
 
-* 
+* we import and create a SparkSession with name *groupbyagg*
+* we parse a csv to a dataframe `df = spark.read.csv('sales_info.csv',inferSchema=True,header=True)` and infer the schema
+* we print the schema (3 columns Company,Person and Sales) and view the df
+* we want to groupby the company column. the method is like pandas `df.groupBy('Company')`. what we get back is a GroupedData object
+* we can chain aggregate methods like .mean() .sum() .max() ,count() and get a Dataframe returned much like pandas dataframes
+* instead of groupby we can use the .agg() method to get aggregates of the whole dataset passing the critaria as a dictionary and get a DatafRame back. `df.agg({'Sales':'sum'}).show()`
+* we can apply the agg method on a GroupedData object
+```
+group_data = df.groupBy('Company')
+group_data.agg({'Sales':'max'}).show()
+```
+* there are many advances statistical methods we can import from spark. e.g `from pyspark.sql.functions import countDistict,avg,stddev`
+* we can apply the imported functions with a .select() call `df.select(countDistict('Sales')).show()` passing teh column we want to apply it on. It returns a DataFrame
+* we can pass an alias for the column label `df.select(avg('Sales').alias('Average Salse')).show()`
+* we can format long numbers to improve their looks. we import format_number `from pyspark.sql.functions import format_number`. we use it by passing it in the select() call specifying the column to apply to and the decimals we want to show
+```
+sales_std = df.select(stddev("Sales").alias('std'))
+sales_std.select(format_number('std',2)).show()
+```
+* again we need to pass alias as format_number is used in column label
+* we can order data with .orderBy() `df.orderBy('Sales').show()` it orders in ascending order.
+* if we want to sort in descending order we need to pass a column object and apply .desc() on it `df.orderBy(df['Salse'].desc()).show()`
+
+### Lecture 28 - Missing Data
+
+* we have 3 options when we have missing data in our dataset
+	* keep them as nulls
+	* drop missing points incuding all the row
+	* fill them with another value
+* we import and create a sparksession
+* we parse a csv file with nulls in a dataframe
+* we have 3 columns and 4 rows. 1 row where both data are missing, 2 rows where one data is missing and 1 row complete
+* we have access to null handling methods in `df.na.` we have .df() .drop() .fill() and .replace()
+* if we use drop `df.na.drop().show()` it will drop any row containing missing data. if we pass a thresh param. it only drops rows with  or more missing data than the threshold `df.na.drop(thresh=2).show()` 
+* we can use the how param instead of threshold using keywords like 'all' (drop if all vals are null) or 'any' if even one is null `df.na.drop(how='any').show()`
+* we can pass the subset param passing a list of column names. this considers these columns for nulls (with how='any' or therh=1) to drop `df.na.drop(subset=["Sales"]).show()`
+* instead of drop we can fill the missing values . if i pass a string `df.na.fill('FILL VAL').show()` sparks sees we pass a string and fill only nulls in string columns with the value. if we pass a num val it fills only num columns
+* usually we speciffy the column that we want to fill  the nulls with the specific val `df.na.fill('No Name',subset=['Name']).show()`
+* we can get the mean value of Sales column using techniques we have seen so far and then use it to fill the nulls
+```
+from pyspark.sql.functions import mean
+mean_val = df.select(mean(df['Sales'])).collect()
+mean_sales = mean_val[0][0]
+df.na.fill(mean_sales,["Sales"]).show()
+```
+* we can do it in an 1liner `df.na.fill(df.select(mean(df['Sales'])).collect()[0][0],['Sales']).show()`
+
+### Lecture 29 - Dates and Timestamps
+
+* we import , create a session and parse  data from a csv (apple_stock,csv) to a dataframe
+* our first column is 'Date'. in schema it appears as timestamp. in the Row object as datetime.datetime
+* we can extract data from datetime object. to do so we import helper functions from spark `from pyspark.sql.functions import (dayofmonth,hour,dayofyear,month,year,weekofyear,format_number,date_format)`
+* we apply them with select passing in as param the Column object. what we get back is a new dataframe eg `df.select(dayofmonth(df['Date'])).show()`
+* if we want to know the avg closing price per year we do => apply year with select to Date column => creaa new column .withColumn() => store it as a new dataframe => groupby per year => apply ,mean() => select the columns i want
+```
+newdf = df.withColumn("Year",year(df['Date']))
+result = newdf.groupBy("Year").mean()[['avg(Year)','avg(Close)']]
+result = result.withColumnRenamed("avg(Year)","Year")
+result = result.select('Year',format_number('avg(Close)',2).alias("Mean Close")).show()
+```
