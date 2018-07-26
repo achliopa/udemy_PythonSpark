@@ -366,4 +366,48 @@ df.orderBy(df["High"].desc()).head(1)[0][0]
 
 ### Lecture 34 - Linear Regression Theory and Reading
 
+* Theory is same as in PythonDSMLBootcamp. so we skip the lecture
+
+### Lecture 35 - Linear Regression Documentation Example
+
+* we will use [MLlib documentation page](https://spark.apache.org/docs/latest/ml-classification-regression.html#linear-regression), Data from Documentation, Linear_regression_Example.ipynb, New Untitled Notebook
+* we import SparkSession `from pyspark.sql import SparkSession`
+* we create a session `spark = SparkSession.builder.appName('lrex').getOrCreate()`
+* we import LinearRegression from MLlib regression group of models. `from pyspark.ml.regression import LinearRegression`
+* we load in our training data as a DataFrame using a new format. libsvm `training = spark.read.format('libsvm').load('sample_linear_regression_data.txt')`
+* we view the dataframe `training.show()` . its already formatted and ready for MLlib. feats are one column of arrays with all feats (vector of feats)
+* we create an instance of our model passing the necessary params. which is the feats col name, the labels col name, the new prediction col name `lr = LinearRegression(featuresCol='features',labelCol='label',predictionCol='prediction')`
+* then we fit our model passign teh complete dataframe `lrModel = lr.fit(training)`
+* we can see the coeficients of the model `lrModel.coefficients` and the intercept `lrModel.intercept`. the coefficient means the feature importance
+* we can view in the model summary a lot of specific attributes like r2 (variance explained by our model) or `lrModel.summary.rootMeanSquaredError`
+* in the doc examples data are never split into training and test. so we trained on all our available data
+* we want to do the train test plit. so we reload the data from the file as all_data `all_data = spark.read.format('libsvm').load('sample_linear_regression_data.txt')`
+* we call random_split() method available to all dataframers passing the split ratio as an array `train_data,test_data = all_data.randomSplit([0.7,0.3])`, we get a list of 2 dataframes , first has 70% of the data the second 30%. usually we du tuple unpacking to train and test data
+* we fit our model to the train data `current_model = lr.fit(train-data)`
+* we use the evaluate method on the model to get the  predictions based on teh test data `test_resutls = current_model.evaluate(test_data)`
+* we can now get inof on the test results `test_resutls.residuals.show()` or get the routsquareerror
+* using evaluate on test_data we are comparing our predictions to the labels that where assigned to the test data
+* we can use the metrics of evaluation to tune various model params to get better results
+* we usually deploy our model to data with no label
+* we simulate the process by selecting the features column from test-data `unlabeled_data = test_data.select('features')`
+* we can now get the predictions using the transform method on the model passing the unlabeled data `predictions = current_model.transform(unlabeled_data)`
+* predictions is a complete dataframe with assigned labels ('predictions') and feats column
+* when we predict unlabeled data we cannot get evaluation metrics as we dont have a reference
+
+### Lecture 36 - Regression Evaluation
+
+* we ll evaluate regression in general. any model that attempts to predict continuous values (unlike categorical values, which is called classification)
+* Accuracy and Recall evaluation metrics are not useful for regression problems. we need metrics designed for continuous values
+* The most common evaluation metrics for regression are:
+	* Mean Absolute Error (MAE). the mean of absolute value of errors , average error
+	* Mean Squared Error (MSE), the mean of the squared errors. larger error are noted more than with MAE, thus MSE is more popular. but we work with squared units, which is not very useful on perception
+	* Root Mean Square Error (RMSE) is MSE but rooted so the units are like MAE so more useful. is the MOst popular
+	* R Squared Value R2 (more a statistical property of the model) is the coeffiient of determination
+* R2 by itself does not tell the whole story. its a measure of how much  variance our model accounts for
+* Takes values between 0 and 1 (0 - 100%)
+* there are different ways to get is like adjusted R squared. some ways can yield a negative value (see wiki). use adjusted R2
+* Rsquared can enhance our understanding of a model, help compare models but not be used  in isolation as the only source of evaluation
+
+### Lecture 37 - Linear Regression Example COde Along
+
 * 
