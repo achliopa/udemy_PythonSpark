@@ -161,7 +161,7 @@ import pyspark
 * we read in a dataset (people.json) included in course notes `df = spark.read.json('people.json')` provide the path to the file
 * to show the dataframe we run `df.show()` we note that some data is missing. we have a 3 row dataset of 2 columns 'age' and 'name' with their labels. one age is missing. spark replaces missing data with *null*
 * to see the scema of the dataframe we use `df.printSchema()`. we get the datatype as well
-* to see the column names of the df we use the .column attribute. returns a python list
+* to see the column names of the df we use the .columns attribute. returns a python list
 * to get statistical summary of the df we use like pandas `df.describe()`. it returns a dataframe. to see it we need to chain .show() method. the info is only for numerical columns
 * in our case the schema is easy to infer as the data is simple. in many case data is complex and we need to define the correct schema
 * to do this first we import the datatypes and objects to use. `from pyspark.sql.types import StructField,StringType,IntegerType,StructType`
@@ -204,7 +204,7 @@ data_schema = [
 * but in this coursw we will use FataFrame methods to operate on data
 * we can use SQL syntax in the filter() method `df.filter("Close < 500").show()` or select from the filetered data chaining .select() method `df.filter("Close<500").select('Open').show()` or passign a list of columns in select
 * we can use python style syntax (like pandas) in filter() instead `df.filter(df['Close'] < 500).show()` or `df.filter(df['Close'] < 500).select('Volume').show()`
-* if want to filter based on multiple conditions i use same python syntax like in pandas dataframes combined conditions. we make use to use parenthesses in subconditions here to avoid py4j (java trnaslation) errors `df.filter( (df["Close"] < 200) & (df['Open'] > 200) ).show()`
+* if want to filter based on multiple conditions i use same python syntax like in pandas dataframes combined conditions. we make use to use parentheses in subconditions here to avoid py4j (java trnaslation) errors `df.filter( (df["Close"] < 200) & (df['Open'] > 200) ).show()`
 * NOT operator in python syntax is ~ , not ! .`~(df['Open'] < 200)`
 * just showing the filtered results is not always useful. many times we need to work on the data. we use the .collect() old RDD style spark method to make them in-memory lists to work with `result = df.filter(df["Low"] == 197.16).collect()`. what we get back is a list of row objects
 * we can store it in a variable and work on it later on e.g grab the row, make it a dictionary and extract data
@@ -280,3 +280,90 @@ result = newdf.groupBy("Year").mean()[['avg(Year)','avg(Close)']]
 result = result.withColumnRenamed("avg(Year)","Year")
 result = result.select('Year',format_number('avg(Close)',2).alias("Mean Close")).show()
 ```
+
+## Section 9 - Spark DataFrame Project Exercise
+
+### Lecure 30 - DataFrame Project Exercise
+
+* with select we can extract multiple columns forming a new DataFrame. the columns might be transformed applying cast or other functions
+```
+result.select(result['summary'],
+    format_number(result['Open'].cast('float'),2).alias('Open'),
+    format_number(result['High'].cast('float'),2).alias('High'),
+    format_number(result['Low'].cast('float'),2).alias('Low'),
+    format_number(result['Close'].cast('float'),2).alias('Close'),
+    result['Volume'].cast('int').alias('Volume')
+    ).show()
+```
+* Create a new dataframe with a column called HV Ratio that is the ratio of the High Price versus volume of stock traded for a day.
+* My solution:
+```
+df_ratio = df.select((df['High']/df['Volume']).alias('HV Ratio'))
+df_ratio.show()
+```
+* Teachers Solution
+```
+df2 = df.withColumn("HV Ratio",df["High"]/df["Volume"])#.show()
+# df2.show()
+df2.select('HV Ratio').show()
+```
+* What day had the Peak High in Price?
+* My solution
+```
+max = df.agg({'High':'max'}).collect()[0].asDict()['max(High)']
+df.filter(df['High'] == max).select('Date').show()
+```
+* Teachers solution
+```
+df.orderBy(df["High"].desc()).head(1)[0][0]
+```
+
+## Section 10 - Introduction to Machine LEarning with MLlib
+
+### Lecture 32 - Introduction to Machine Learning and ISLR
+
+* Machine Learning Sections will have:
+	* Suggested Reading Assignment
+	* Basic Theory LEcture
+	* Documentation Walkthrough
+	* More realistic custom code example
+	* Consulting Project
+	* Consulting Project Solutions
+* Consulting Projects are Looser, realistic project fo us to attempt with the skills just learned
+* Machine Learning is a method of data analysis that automates analytical mnodel building
+* Using algorithms that iteratively learn from data, machine learning allows computers to find hidden insights without being explicitly programmed where to look
+* ML is used in many applications
+* ML Flow is Analyze Data, Clean Data, SPlit Data, Iterate(Train Model , Evaluate Model) => Deploy Model
+* Spark MLlib is mainly designed for Supervised and Unsupervised Learning tasks. Most of its algorithms fall in these categories.
+* *Supervised learning* algorithms are trained using labeled examples. an inpute where the desired output is known. THe learning algo receives a set of inputs with the corresponding correct outputs and it learns by compaing its actual output with correct outputs to find errors. it then modifies model accordingly
+* Though methods like classification, regression, prediction and gradient boosting, supervised  learining uses patterns to predict the values of the label on additional unlabeled data.
+* Supervised learning is used where historical data predicts likely future events
+* *Unsupervised learning* is used against data that has no historical labels
+* the system is not told the "right answer" the algo mustfugure out what is shown
+* the goal is to explore the data and find some structure within. 
+* e.g it can find the main attributes that separate custmer segments from each other.
+* popular techniques include: sel-organizing maps, nearest-neighbour mapping, k-means-clusterring, singular value decomposition
+* one issue is that it can be difficult to evaluate results of an unsupervised model
+
+### Lecture 33 - Machine Learning with Spark and Python with MLlib
+
+* Spark has its own MLlib for Machine Learning
+* The future of MLlib uses Spark 2.0 DataFrame syntax
+* One of the main perks of MLlib is that we need to format our data so that eventually it just has one or tewo columns:
+	* Features,Labels (Supervised)
+	* Features (Unsupervised)
+* So if we have multple feature columns  in our dataframe we need to condense it to a single colun where each row is an array of the old entries
+* This requires more data processing than other ML libs, but owr syntax is applicable to distributed big data
+* In owr documetation examples are with nicelly formated data.
+* in the custom code-along examples the data will be realistic and messy
+* the project will have real-world data
+* To get good at MLlib we must familiarize ourselves with the documentation
+* [MLlib docs](https://spark.apache.org/docs/latest/ml-guide.html)
+* it has documentation for all mahjor algorithms
+* Extracting,Transforming and Selecting feats is essential to prepare our datafor MLib
+
+## Section 11 - Linear Regression
+
+### Lecture 34 - Linear Regression Theory and Reading
+
+* 
