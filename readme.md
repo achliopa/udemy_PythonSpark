@@ -410,4 +410,64 @@ df.orderBy(df["High"].desc()).head(1)[0][0]
 
 ### Lecture 37 - Linear Regression Example COde Along
 
-* 
+* we ll examine an ecommerce customer data for a companys website and mobile app
+* we ll try to predict customers total amount expenditure (continuous money val)
+* we ll see how to convert realistic data into  a format accepted by Sparks MLlib
+* we import the SparkSession `from pyspark.sql import SparkSession`
+* we create a SparkSession `spark = SparkSession.builder.appName('lr_example').getOrCreate()`
+* we import LinearRegression `from pyspark.sql.ml.regression import LinearRegression`
+* we fetch our data `data = spark.rea.csv('Ecommerce_Customers.csv',header=True,inferSchema=True)`
+* we print the schema `data.printSchema()`
+* we view the data `data.show()`
+* we view first row
+```
+for item in data.head(1)[0]:
+	print(item)
+```
+* we need to prepare our dataset for MLlib we import Vector Assembler 
+```
+from pyspark.ml.linalg import Vectors
+from pyspark.ml.feature import VectorAsembler
+```
+* we see the columns `data.columns`
+* we are interested only into the numeric ones for our feats while Yearly Amount Spent will be our lables column
+* we are now ready to build our vectors. we create our VrectorAssebler passing as input an array of the col labels  and as output the vectors array col name
+```
+assembler = VectorAssembler(
+    inputCols=["Avg Session Length", "Time on App", 
+               "Time on Website",'Length of Membership'],
+    outputCol="features")
+```
+* we now have to transform the data into the vector using the assembler  `output = assembler.transform(data)`
+we check the table schema `output.printSchema()` we have the dataset as it was + the features column
+* we check this volumn `output.select('features').show()`. we see the first row `output.head(1)` and see the featues col is a DenseVector
+* we extract the columns of interest for MLlib `final_data = output.select('features','Yearly Amount Spent')`
+* we split our data into a train and test set `train_data,test_data = final_data.randomSplit([0.7,0.3])`
+* we see the properties of both sets with .describe().show()
+* we now create our linear regression model instance `lr = LinearRegression(labelCol='Yearly Amount Spent')`
+* we now train our model `lr_model = lr.fit(train_data)`
+* we  evaluate the model getting the results passing the test data `test_results = lr_model.evaluate(test_data)`
+* we check the residials (diff between pred and actual test data) `test_results.residuals.show()`
+* we no check the regression metrics `test_results.rootMeanSquareError` or `test_results.r2` . the values we get are good so our model is working OK. to get a measure of comparison with the label vaules we ptint `final_data.describe().show()`. we compare RSME to the mean value . r2 says our model explais 98% of varianve in the data.
+* usually when i get really good metrics we double check our dataset
+* how we deploy our model? `unlabeled_data. = test_data.select('features')` has only feats so it is good to simulate input data. we do our predictions `predictions = lr_model.transform(unlabeled_data)` which has now the predicted labels col
+
+## Section 12 - Logistic Regression
+
+### Lecture 40 - Logistic Regression Theory and Reading
+
+* Same as in PythonDSMLBootcamp
+* Accuracy is (ΣΤP + ΣΤΝ)/Σ Τotal Population
+* Good metrics is dependent on the application (usually we care about accuracy or recall)
+* Binary Classification has its own classification metrics (vizualizations of metrics from the confusion matrix)
+* The receiver operator curve (ROC) was developed in WWII to analyze radar data
+* ROC curve is a plot of Sensitivity (True Positive rate) / (1 - Specificity(False Positive Rate))
+* the diagonal line on the plot is the random guess (50% chance to get it right) the top left corner is the Prfect Classification. if we are in the half above the diagonal we are perfrming better than a random guess
+
+### Lecture 41 - Logistic Regression Example Code Along
+
+* We will introduce the concept of *Evaluators*
+* Evaluators behave similar to Machine Learning Algorithm objects, but are designed to take in evaluation DataFrames `model.evaluate(test_data)`
+* Evaluators are technically still experimental acording to the MLlib docs, so we ll use them with caution in production code
+* They are part of Spark since v1.4 so they are stable
+* we ll work on sample_libsim_data.txt
