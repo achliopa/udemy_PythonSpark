@@ -791,4 +791,150 @@ kmeans = KMeans(featuresCol='scaledFeatures',k=3)
 
 ### Lecture 57 - Introduction to natural Language Processing
 
-* 
+* NLP is a field of machine learning that focuses on creating models (predictive or even unsupervised) from a text data source (straight from articles of words)
+* for NLP we will just contain a single custom code along example. the MLlib documentation doesn't really have a full example and the custom code along is a larger multi-step process.
+* NLP is a very large field of ML with its unique challenges and dsets of algorithms and feats. here we will scratch just the surface of it.
+* NLTK library is a nNLP library from python separate from Spark.
+Foundations of Statistical Natural language Processing (manning) is good theory book
+* Examples of NLP
+	* clustering news articles
+	* suggesting similar books
+	* grouping legal docs
+	* analyzing consumer feedback
+	* spam email detection
+* Our basic process with NLP is:
+	* Compile all documents (corpus)
+	* featurize the words to numerics
+	* compare features of documents
+* Astandard way of doing this is using TF-IDF method
+* Check notes from PYthonDSMLBootcamp as lecture is the same from now on
+* Spark has a lot of pySpark.ml.feature tools to help out with this process and make our life easy
+
+### Lecture 58 - NLP Tools Part 1
+
+* we'll explore a few of the tools spark offers for dealing with text data
+* we import and create a spark session
+* we will now talk about tokenizers. okenization is the process of taking text and breaking it into individual terms (usually words)
+* spark comes with a tokenizer class. we will use a regex tokenizer. this allows advanced tokenization based on regex
+* the default regex params pattern uses delimiters or spaces to split the text into tokens. but we can pass in our own params or regex patern to control the split
+* first we import it `from pyspark.ml.feature import Tokenizer,RegexTokenizer`
+* we also import helper funcs `from pyspark.ml.functions import col,udf` to work on cols and create our user defined functions (udf) or lambda functions to pass in the tokenizer
+* we also import some types `from pyspark.sql.types import IntegerType`
+* we create a dataframe full of sentences passing in a list of tuples for  rows and a list of strings for labels 
+```
+sentenceDataFrame = spark.createDataFrame([
+    (0, "Hi I heard about Spark"),
+    (1, "I wish Java could use case classes"),
+    (2, "Logistic,regression,models,are,neat")
+], ["id", "sentence"])
+```
+* we now create a tokenzer passing in the label of cols it will work on and the output col `tokenizer = Tokenizer(inputCol="sentence", outputCol="words")`
+* we also create a regex tokenizer passing the regex pattern. `regexTokenizer = RegexTokenizer(pattern='\\W', inputCol="sentence", outputCol="words")`
+* we will define a udf to count the tokens `count_tokens = udf(lambda words: len(words), IntegerType())` note we need to pass in the return val datatype
+* we now transform our df using the tokenizer `tokenized = tokenizer.transform(sen_df)`
+* our new column words has a list of tokens. for the 3rd sentence we cannot tell the num of tokens as the sentense was comma separated. we use our newly defined func
+* we create a new column for the counts `tokenized.withColumn('tokens',count_tokens(col('words'))).show()` 3rd sentence is treated as one big word is not split on comma using default tokenizer
+* we use the regex tokenizer `rg_Tokenized = regexTokenizer.transform(sentenceDataFrame)` 
+* we apply the same method and selction to view the counts `rg_tokenized.withColumn('tokens',count_tokens(col('words'))).show()` now the tokenization is correct
+* we would like to remove common trivial words 'stopwords' to make our algo more efficient. we will use a stopword remover `from pyspark.ml.feature import StopWordsRemover`
+* to test it we make a new dataframe simulating an already tokenized text df with stopwords
+```
+sentenceDataFrame = spark.createDataFrame([
+    (0, ["I", "saw", "the", "green", "horse"]),
+    (1, ["Mary", "had", "a", "little", "lamb"])
+], ["id", "raw"])
+```
+* we make a stopword remover object specing the input and output columns `remover = StopWordsRemover(inputCol='tokens',outputCol='filtered')`
+* we transfrom our dataset using the remover `remover.transform(sentenceData).show(truncate=False)` truncate=False forces spark to show the complete view
+* n-grams are sequences of a toke for some integer. a squence of n tokens for  integer n
+* it is used to transform input feats to n-grams. it usually takes the output of a tokenizer and the parameter n is used to define the number of terms in its n-gram
+* the output will consist of a sequence of these n-grams where each one is represennted by a space delimited string  of n consecutive words
+* we import the ngram `from pyspark.ml.feature import NGram`
+* we pass a tokenized dataframe
+```
+wordDataFrame = spark.createDataFrame([
+    (0, ["Hi", "I", "heard", "about", "Spark"]),
+    (1, ["I", "wish", "Java", "could", "use", "case", "classes"]),
+    (2, ["Logistic", "regression", "models", "are", "neat"])
+], ["id", "words"])
+```
+* we create the ngram instance `ngram = NGram(n=2, inputCol="words", outputCol="ngrams")`
+* we transfrom our dataset with the ngram and show its new column 
+```
+ngramDataFrame = ngram.transform(wordDataFrame)
+ngramDataFrame.select("ngrams").show(truncate=False)
+```
+* the list of tokens is now grouped in subsentences containing n consecutve words in each possible combination. this is useful when the relationships between words matter
+
+### Lecture 59 - NLP Tools Part 2
+
+* we will see TF-IDF and count vectorizations
+* TF-IDF is a feature vectorization used with text to reflect the importance of a term to the doc and the corpus itself
+* we import HashingTF,IDF,Tokenizer `from pyspark.ml.feature import HashingTF, IDF, Tokenizer`
+* we import as small dataset passing the label of the document the sentence belongs to
+```
+sentenceData = spark.createDataFrame([
+    (0.0, "Hi I heard about Spark"),
+    (0.0, "I wish Java could use case classes"),
+    (1.0, "Logistic regression models are neat")
+], ["label", "sentence"])
+```
+* we instantiate a tokenizer object `tokenizer = Tokenizer(inputCol="sentence", outputCol="words")`
+* we transform our dataset with it. `words_data = tokenizer.transform(sentenceData)`
+* next we want to see the term frequency using the hashing tf `hashing_tf = HashingTF(inputCol='words',outputCol='rawFeatures')`
+* we transform our dataset using the hashingtf `featurized_data = hashing_tf.transform(words_data)`
+* we are now ready to apply the idf using the output of tf as input `idf = IDF(inputCol="rawFeatures", outputCol="features")`
+* we now use idf to fit it to our hashed tf data (train it) `idfModel = idf.fit(featurized_data)`
+* then we use the model to trasnform the data `rescaled_data = idf_model.transform(featurized_data)`
+* what we have as an output is a ready dataset for any ML algorithm. our dataset has the labels and the tf-idf vector with the vlaues for each vector element
+* count vectorizer helps transform a collection of text documents into vectors of words counts
+* we import it `from pyspark.ml.feature import CountVectorizer` and we drab a dataset to evaluate it
+```
+df = spark.createDataFrame([
+    (0, "a b c".split(" ")),
+    (1, "a b b c a".split(" "))
+], ["id", "words"])
+```
+* we create an object `cv = CountVectorizer(inputCol="words", outputCol="features", vocabSize=3, minDF=2.0)` the params are selfexplanatory, vocabSize is the max num of words of the set and the minDF is the minimum number of documents that a word has to appear in to be included in the vocabulary so it affects the fitting process 
+we fit it to our set `model - cv.fit(df)`
+* we transform the dataset with it `result = model.transform(df)` 
+* this si the bag of words method that we can use along tf-idf
+
+### Lecture 60 - Natural Language Processing Code Along Project
+
+* we will build a spam detection filter using python and spark. 
+* the data set consists of human text from  a study in singapore and spam texts from UK.
+* we import and create a sparksession
+* we import the data `data = spark.read.csv("smsspamcollection/SMSSpamCollection",inferSchema=True,sep='\t')`
+* we relabel our data `data = data.withColumnRenamed('_c0','class').withColumnRenamed('_c1','text')`
+* we will now create a new length feature to our dataset 
+```
+from pyspark.sql.functions import length
+data = data.withColumn('length',length(data['text']))
+``` 
+* we will now see if there is a major difference of the length in spam and ham messages
+* we will use groupby and aggregates `data.groupBy('class').mean().show()`
+* we see that there is clear difference. so this is a nice feature. this approach of infering usefule feats is called feature engineering
+* we will now prepare our TF_IDF using the tokenizer et al. we import them `from pyspark.ml.feature import Tokenizer,StopWordsRemover, CountVectorizer,IDF,StringIndexer`
+* we start with the tokenizer `tokenizer = Tokenizer(inputCol='text',outputCol='token_text')`
+* then we seup the stopword remover `stop_remove = StopWordsRemover(inputCol='token_text',outputCol='stop_token')`
+* we do countvectorization `count_vec = CountVectorizer(inputCol='stop_token',outputCol='c_vec')`
+* we then do idf `idf = IDF(inputCol="c_vec", outputCol="tf_idf")`
+* we then make our classes to numberics `ham_to_spam_numeric = StringIndexer(inputCol='class',outputCol='label')`
+* we also need to assemble our feats to vector for MLlib
+```
+from pyspark.ml.feature import VectorAssembler
+clean_up = VectorAssembler(inputCols=['tf_idf','length'],outputCol='features')
+```
+* we are now ready to build our model. a common classification alg for NLP is Naive Bayes we will use it 
+```
+from pyspark.ml.classification import NaiveBayes
+nb = Naivebayes()
+```
+* with all these steps a pipeline is  really handy to reuse our model. we import and intantiate it passing all the steps in order to streamline our data prep. then we fit it to our set and and trasform the set with it
+```
+from pyspark.ml import Pipeline
+data_prep_pipe = Pipeline(stages=[ham_spam_to_num,tokenizer,stopremove,count_vec,idf,clean_up])
+cleaner = data_prep_pipe.fit(data)
+clean_data = cleaner.transform(data)
+```
