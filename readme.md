@@ -534,4 +534,130 @@ assembler = VectorAssembler(inputCols=['Pclass', 'SexVec', 'Age', 'SibSp', 'Parc
 ### Lecture 45 - Tree Methods Theory and Reading
 
 * We have done this Lecture in PythonDSMLBootcamp
-* 
+* Entropy and Information Gain are the Mathematicla Methods of choosing the best Split
+* In Random Forests we use many trees. where a new random set of sample featuees is chosen for every single tree ant every split
+* Random Forest works for Classification AND Regression (average of predicted values and use that as the label)
+* *Gradient Boosted Trees* involve three elements:
+	* a loss function to be optimized
+	* a weak learner to make predictions
+	* an additive model to add weak learners to minimize the loss function
+* Loss Function:
+	* a loss function in basic terms is the function/equation we will use to determine how  far off our predictions are
+	* Regression might use a squared error anf classification may use logarithmic loss
+	* We wont have to deal with htis directly using Spark (it happens under the hood)
+* Weak Learner: 
+	* Decision Trees are used as the weak leaner in gradient boosting
+	* It is common to constrain the weak learners: max num of  layers, nodes,splits or leaf nodes
+* Additive model: 
+	* Trees are added one at a time and existing trees in the model are not changed
+	* A gradient descent procedure is used to minimize the loss when adding trees
+* Whats the  most intuitive way to think about all this if Spark does all for us?
+* We can memorize it thinking of it as 3 'easy' steps:
+	* 1. Train a weak model m using data samples drawn according to some weight  distribution
+	* 2. Increase the weight of samples that are misclassified by model m and decrease the weight of samples that are classified correctly by model m
+	* 3. Train next weak model using samples drawn according to the updated weight distribution
+* In this way the algorithm trains models using data samples  that are difficult to learn in previous rounds. this results in an ensemble of models that are good at learning different parts of training data, boosting weights of samples that were difficult to get correct (end of Chapter 8 of ISLR)
+* Spark does all this under the hood. we can use the defaults if we want or dive into Theory and play with the params.
+
+### Lecture 46 - Tree Methods Documentation Examples
+
+* we ll work through Decision Trees, Random Forests, Gradient Boosted Trees
+* we will show some useful evaluation feats and how to use multiclass evaluatiors in binary data
+* we import and create a sparksession
+* we import pipeline and classification models
+```
+from pyspark.ml import Pipeline
+from pyspark.ml.classification import RandomForestClassifier,GBTClassifier, DecisionTreeClassifier
+```
+* these models are avaialble in regression library for regression problems
+* we read in the data `data = spark.read.format("libsvm").load("sample_libsvm_data.txt")`
+* data are already formated for MLlib
+* we split our data `train_data,test_data = data.randomSplit([0.7,0.3])`
+* we start creating our classifier objects 
+```
+dtc = DecisionTreeClassifier()
+rfc = RandomForestClassifier(numTrees=100)
+gbt = GBTClassifier()
+``` 
+* these models  have a lot of params for tweaking, but we use defaults for now
+* we fit our models
+```
+dtc_model = dtc.fit(train_data)
+rfc_model = rfc.fit(train_data)
+gbt_model = gbt.fit(train_data)
+```
+
+* we now use them for doing predictions
+```
+dtc_preds = dtc_model.transform(test_data)
+rfc_preds = rfc_model.transform(test_data)
+gbt_preds = gbt_model.transform(test_data)
+```
+* the preds are dataframes containing the atual labels and predictions (labelwise are same) so we can run evaluator on them to get the metrics 9we donts even have to se t the columns as they are default
+* we import the evaluator `from pyspark.ml.evaluation import MulticlassClassificationEvaluator`
+* we create an evaluator `acc_eval = MulticlassClassificationEvaluator(metricName='accuracy')` 
+```
+dtc_accuracy = acc_eval.evaluate(dtc_preds)
+rfc_accuracy = acc_eval.evaluate(rfc_preds)
+gbt_accuracy = acc_eval.evaluate(gbt_preds)
+``` 
+* even dtc_accuracy is 1.0 so we have perfect fit (data are artifical)
+* we will now learn how to get feature importance. we apply .featureImportances on the model. what we get back is a SparcezVector with the feat and its iomportance, difficult to transalte as its coded
+
+### Lecture 47 - Decision Trees and Random Forest Code Along Examples
+
+* we ll see all 3 methods and compare their rewsults on a real workd dataset (public private labeled unis)
+* we import and create a Spark Session
+* we load the data `data = spark.read.csv('College.csv',inferSchema=True,header=True)`
+* we check the inferedschema. it has a lot of feats
+* we need to format data for MLlib so we import assembler `from pyspark.ml.feature import VectorAssembler` 
+* we print the columns to use cp to pass them in assembler `data.columns`
+* we create the assbler passing all numbeirc feats
+```
+assembler = VectorAssembler(
+  inputCols=['Apps',
+             'Accept',
+             'Enroll',
+             'Top10perc',
+             'Top25perc',
+             'F_Undergrad',
+             'P_Undergrad',
+             'Outstate',
+             'Room_Board',
+             'Books',
+             'Personal',
+             'PhD',
+             'Terminal',
+             'S_F_Ratio',
+             'perc_alumni',
+             'Expend',
+             'Grad_Rate'],
+              outputCol="features")
+```
+* we create the output using the assembler to transform the data `output = assembler.transform(data)`
+* we now have to make our categorical  label column a vector that MLlib can understand
+* we import the indexer `from pyspark.ml.feature import StringIndexer`
+* we create the indexer `StringIndexer(inputCol='Private',outputCol='Privateindex')`
+* we get our output fixed with `output_fixed = indexer.fit(output).transform(output)`
+* we dont use pipeline as we dont have to repeat the process
+* we print out the output_fixed dfs schema. we still have the 2 string cols and the feature columns we should drop (we dont need to as we declare cols that are used in the model) `final_data = output_fixed.select('features'.'privateIndex')`
+* we split our data and import the 3 classification models
+* we import pipeline
+* we create our 3 models fit them and get the predictions
+```
+dtc = DecisionTreeClassifier(labelCol='PrivateIndex',featuresCol='features')
+rfc = RandomForestClassifier(labelCol='PrivateIndex',featuresCol='features')
+gbt = GBTClassifier(labelCol='PrivateIndex',featuresCol='features')
+dtc_model = dtc.fit(train_data)
+rfc_model = rfc.fit(train_data)
+gbt_model = gbt.fit(train_data)
+dtc_preds = dtc_model.transform(test_data)
+rfc_preds = rfc_model.transform(test_data)
+gbt_preds = gbt_model.transform(test_data)
+```
+* we import the BinaryClassificationEvaluator and create the evaluator `my_binary_eval = BinaryClassificationEvaluator(labelCol='PrivateIndex')` 
+* we print the UAC for dtc `my_binary_eval.evaluate(dtc_preds)` its 90.9%. RFC gives 97% with default params
+* gbt predictions dont have the rawPrediction and probability columns so we have to tweak the BinaryEvaluator to get the prediction column as rawprediction `my_binary_eval2 = BinaryClassificationEvaluator(labelCol='PrivateIndex',rawPredictionCol='prediction')` 
+* gbt uac `my_binary_eval2.evaluate(gbt_preds)` is 89% so the worse of all so we need to adjust its params
+* we import the MulticlassClassificationEvaluator to get more eval metrics `acc_eval = MulticlassClassificationEvaluator(labelCol='PrivateIndex',metricName='accuracy')`
+* we get rfc accurace `rfc_acc = acc_eval.evaluate(rfc_preds)`
