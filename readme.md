@@ -408,7 +408,7 @@ df.orderBy(df["High"].desc()).head(1)[0][0]
 * there are different ways to get is like adjusted R squared. some ways can yield a negative value (see wiki). use adjusted R2
 * Rsquared can enhance our understanding of a model, help compare models but not be used  in isolation as the only source of evaluation
 
-### Lecture 37 - Linear Regression Example COde Along
+### Lecture 37 - Linear Regression Example Code Along
 
 * we ll examine an ecommerce customer data for a companys website and mobile app
 * we ll try to predict customers total amount expenditure (continuous money val)
@@ -471,3 +471,67 @@ we check the table schema `output.printSchema()` we have the dataset as it was +
 * Evaluators are technically still experimental acording to the MLlib docs, so we ll use them with caution in production code
 * They are part of Spark since v1.4 so they are stable
 * we ll work on sample_libsim_data.txt
+* we import a sparksession 	`from pyspark.sql import SparkSession`
+* we create a session `spark = SparkSession.builder.appName('mylogreg').getOrCreate()`
+* we import the model `from pyspark.ml.classification import LogisticRegression`
+* we grab our training data `my_data = spark.read.format('libsvm')`.load('sample_libsvm_data.txt')
+* we view our data `my_data.show()` they are already formated for MLlib. a labels column (binary) and a feats column of vestors
+* we create our model `my_log_reg_model = LogisticRegression()`
+* we fit our model on the training data `fitted_logreg = my_log_reg_model.fit(my_data)`
+* we can get a summary of our fitted model `log_summary = fitted_logreg.summary
+* we print out the schema of predictions DataFrame `log_summary.predictions.printSchema()`. it has the actual label, the actual features. the raw prediction, the probability of the prediction and the prediction value as a label. what we are interested is to see if the label column matches the rpediction column
+* we will now see how to evaluate results using evaluators. to do so we first split our data into training and test sets
+* lr_train,lr_test = we use random split `my_data.random_split([0.7,0.3])`
+* we retrain our model on the training data 
+```
+final_model = LogisticRegression()
+fit_final = final_model.fit(lr_train)
+```
+* we use evaluate to get the predicted dataset `prediction_and_labels = fit_final.evaluate(lr_test)`
+* like in previous example with the summary we can call `predictions_and_labels.predictions.show()` and view the datast with actual and rpedicted lables. but now it is not a 100% match as we used test-data
+* we import our evLUtora for binary and multiclass `from pyspark.ml.evaluation import BinaryClassificationEvaluator,MulticlassClassificationEvaluator`
+* evaluator works on the predictions DF and requires a metricsName (areaunderROC). to get more metrics (accuray recall etc) we need to use the MulticlassClassificationEvaluator
+* we create an evaluator `my_eval = BinaryClassificationEvaluator()`
+* we use it to evaluate passing the parms it needs `my_final_roc = my_eval.evaluate(prediction_and_labels.predictions)` what we get is a 1.0 (area under ROC) so its aperfect fit
+
+### Lecture 42 - Logistic Regression Code Along
+
+* we ll work on a 'classic' classification example . the titanic dataset (AGAIN...)
+* we will see a better way to deal with categorical data with a two step process
+* we will see how to use pipleines to set stages and build reusable models
+* our data will have missing information so we will have to prepare it
+* we import sparksession and create a session named 'myproj'
+* we grab in the data `df = spark.read.csv('titanic.csv',inferSchema=True,header=True)`
+* we print the schema  `df.printSchema()` we have amultitude of columns
+* we select only columns relevant ot our problem `my_cols = df.select(['Survived', 'Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare', 'Embarked'])`
+* we have to deal with missing data. we will just drop them `my_final_data = my_cols.na.drop()`
+* we now have to wor on our categorical columns. irst we import helpers from ml.feature lib `from pyspark.ml.feature import VectorAssembler,VectorIndexer,OneHotEncoder,StringIndexer`
+* we will use StringIndexer on categorical columns and the HotEncode them to produce numerical vals outr of string categories `gender_indexer = StringIndexer(inputCol='Sex', outputCol='SexIndex')`
+* we will now onehotencode them. transform the indexes for the cats into one hot encoding which is an array with 0 and 1 indicating the category e.g A,B,C => 0,1,2 => [1,0,0],[0,1,0],[0,0,1] `gender_encoder = OneHotEncoder(inputCol='SexIndex',outputCol='SexVec')`
+* we follow the same approach for embarked column
+```
+embark_indexer = StringIndexer(inputCol='Embarked',outputCol='EmbarkIndex')
+embark_encoder = OneHotEncoder(inputCol='EmbarkIndex',outputCol='EmbarkVec')
+```
+* we are now ready to assemble all feat cols into a vector
+```
+assembler = VectorAssembler(inputCols=['Pclass', 'SexVec', 'Age', 'SibSp', 'Parch', 'Fare', 'EmbarkedVec'], outputCol='features')
+```
+* we are now ready to train our model w/ data
+* we import our model `from pyspark.ml.classification import LogisticRegression`
+* we also import the pipeline `from pyspark.ml import Pipeline`. pipeline builds a pipeline of stages for each step
+* we create the model specing the col names to expect `log_reg_titanic = LogisticRegression(featuresCol='features', labelCol='Survived')`
+* now we create our pipeline instance where we put the already defined stages of data prep and model building `pipeline = Pipeline(stages=[gender_indexer, embark_indexer, gender_encoder,embark_encoder, assembler,log_reg_titanic])` Ordr matters
+* we split our data `train_data, test_data = my_final_data.randomSplit([0.7,0.3])`
+* we can now use the pipeline as a model where input data are passed in all steps. `fit_model = pipeline.fit(train_data)`
+* we now get the results of our model evaluation by transforming out test_data `results = fit_model.transorm(test_data)`
+* we now import the BinaryEvaluator `from pyspark.ml.evaluation import BinaryClassificationEvaluator`
+* we instantiate it passing the actual col labels of our results df `my_eval = BinaryClassificationEvaluator(rawPredictionCol='prediction', labelCol='Survived')` prediction is the default coname for transform outpu and Survived the labels colname in our original data
+* we ge tthe metric using the evaluate() method `AUC = my_eval.evaluate(results)` (area under the curve) the val is 0.76 which needs improvement
+
+## Section 13 - Decision Trees and Random Forests
+
+### Lecture 45 - Tree Methods Theory and Reading
+
+* We have done this Lecture in PythonDSMLBootcamp
+* 
