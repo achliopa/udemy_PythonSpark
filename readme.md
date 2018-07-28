@@ -661,3 +661,68 @@ gbt_preds = gbt_model.transform(test_data)
 * gbt uac `my_binary_eval2.evaluate(gbt_preds)` is 89% so the worse of all so we need to adjust its params
 * we import the MulticlassClassificationEvaluator to get more eval metrics `acc_eval = MulticlassClassificationEvaluator(labelCol='PrivateIndex',metricName='accuracy')`
 * we get rfc accurace `rfc_acc = acc_eval.evaluate(rfc_preds)`
+
+## Section 14 - K-Means Clustering
+
+### Lecture 50 K-means Clustering Theory and Reading
+
+* we ve worked with labeled data. but what about unlabeled ones
+* many times we will try to create groups of data, instead of trying to predict classes or vals
+* this is a clustering problem. like trying to label the data
+* we input ulabeled data and the *unsupervised algo* returns possible clusters of data
+* so we have data that only contains feats and we want to see if there are patterns in the data that wouold allow us to create groups or clusters
+* by the nature of this problem it can be difficult to evaluate the groups or clusters for 'correctnes'
+* so it comes down to domain knowledge to be able to interpret the clusters assigned
+* so maybe we have customer data and then cluster them into distinct groups. it will up to us to decide whjat the groups actually represent. soms dat is makkelijk som dat is echte moelijk.
+* eg we could cluster tumors in two groups (hoping to separate them  between benign and malignant)
+* but there is no guarantee the clusters will fall along these lines. it will just split into the mtwo most separable groups
+* depending on the algo it might be up to us to decide beforehand how many clusters we expect to create
+* a lot of probs have no 100% correct approach or answer. that the nature of unsuperviosed learning
+* About K-Means Clustering we can see our notes from PythonDSMLBootcamp and ISLR book
+* pyspark does not support a plotting mechanism. we could use collect() and then plot the results with matplotlib or other visualization libraries
+* We should not take the elbow rule as a strict rule when choosing a K value
+* a lot of depends on the context of the situation (domain knowledge)
+
+### Lecture 51 - KMeans Clustering Documentation Example
+
+* we don't need the label column (as we are doing clustering - unsupervised learning)
+* the MLlib documentation example is a bit wierd as the dataset is very small
+* we import and create a pyspark session
+* we import our model `from pyspark.ml.clustering import KMeans`
+* we import the data `dataset = spark.read.format("libsvm").load("sample_kmeans_data.txt")`
+* we view our data. it is prepared and contains feats vector and label
+* we get only the feats `final_data = dataset.select('features')`
+* we create our model seting the k num. `kmeans = KMeans().setK(2).setSeed(1)` we also set a seed value for a rng generator. as the initial position of Ks is random
+* we fit the model `model = kmeans.fit(final_data)`
+* we will try to evaluate our model so we will calc the sum of  square errors SSE `wssse = model.computeCost(final_data)` it s 0.12
+* next we will get the cluster centers . as the gfeats vecors are 3 dimensional we expect 3dimensions for the center `centers = model.clusterCenters()` which returns an array with the cluster centers.
+* we now want to label our input data so assign a lable to each row. we do this with transform() `results = model.transform(final_data)`
+* in unsupervised learning there is no reason to do a train test split
+* we increase K and regit the model. wssse goes up
+* we see the new centers. they make no added value given the dataset
+
+### Lecture 52 - Clustering Example Code Along
+
+* we will work on a real dataset containing some data on three distingt seed types
+* for certain machine learning algirithms it is a good idea to scale your data.
+* drops in model performance can occur with highly dimensional data (curse of dimensionality). so we will practice scaling feats using pySpark
+* we dont have the original labels to produce evaluation metrics
+* we import and create spark session
+* we import the data `dataset = spark.read.csv("seeds_dataset.csv",header=True,inferSchema=True)`
+* we check the schema and we have vaious numeric columns of feats. the feats are about seeds. they represent three diferent varities of wheats (Khama, Rosa, Canadien) . they xrayed seed samples measuring their feats
+* values are similar amng feats so scling is not necessary. we will do it for the learning value of it.
+* there is no label for the wheats. we know there are 3 groups.
+* we import KMeans `from pyspark.ml.clustering import KMeans`
+* we now need to format our data so we import assembler `from pyspark.ml.feature import VectorAssembler` we check the columns to input them to the vector. we need all of them so we pass them all `assembler = VectorAssembler(inputCols = dataset.columns, outputCol='features')`
+* we transform our dataset to vectors `final_data = assembler.transform(dataset)`
+* we now want to scale our data so we import the scaler `from pyspark.ml.feature import StandardScaler` it works like the assembler object `scaler = StandardScaler(inputCol='features', outputCol='scaledFeatures')` scaler accepts parameters on how we want to scale (withMean or withStd)
+* we now dtrain the scaler fitting our data on the scaler `scaler_model = scaler.fit(final_data)` and we transform our dataset using the scaler `final_data = scaler_model.transform(final_data)`
+* we view our dataset 	`final_data.head(1)` and it has all the inital cols + the vectorized and the scaled vectorized feats' there is not much difference with the unscaled vals
+* we aare now ready to work on our model
+```
+kmeans = KMeans(featuresCol='scaledFeatures',k=3)
+```
+* we fit our model to teh data `model = kmeans.fit(final_data)`
+* we print the wssse `print('WSSSE {}'.format(model.computeCost(final_data)))`
+* we get the cluster centers `centers = model.clusterCenters()` they apply to a 7dimensional space
+* we transform the data using the model to get the labels `model.transform(final_data).select('prediction').show()`
