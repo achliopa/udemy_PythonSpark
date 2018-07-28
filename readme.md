@@ -726,3 +726,69 @@ kmeans = KMeans(featuresCol='scaledFeatures',k=3)
 * we print the wssse `print('WSSSE {}'.format(model.computeCost(final_data)))`
 * we get the cluster centers `centers = model.clusterCenters()` they apply to a 7dimensional space
 * we transform the data using the model to get the labels `model.transform(final_data).select('prediction').show()`
+
+## Section 15
+
+### Lecture 55 - Introduction to Recommender Systems
+
+* we will learn how to build a recommender system with Spark and Python
+* there is no Consulting Project or Documentation Example in this section. the eas of use of Spark doe not lend itself to be tested on the subject
+* the challenge of recommender systems is not on running the model but getting the data and organizing the data or building an app to get the data. this is out of scope of the course
+* what Spark can do is to take the formatted data and quickly build the recommender system
+* for further theoretical insigight see the Recommender Systems book by jannach and Zanker
+* theory is explaied also in our PythonDSMLBootcamp notes
+* Fully developed and deployed recommendation systems can be complex and resource intensive
+* Usually we would put someone with previous experience on the subject implemente a production recommendation system
+* even companies that rely heavily on recommender systems (Netflix) dont get it right in the first try
+* Netflix changed mny times its system from stars rating to like/dislike and then a percentage of recommendation
+* Full recommender systems require a heavy linear algebra background. this lecture will provide a high level overview
+* the 2 basic types are Content Based and Collaborative Filtering (check notes of previous course)
+* These technbiques aim to fill in the missing entries of a user-item association matrix
+* spark.ml currently supports model-based collaborative filtering, in which users and products are described by a small set of latent factors that can be used to predict missing entries 
+* spark.ml uses the alternating least squares (ALS) algorithm to learn these latent factors
+* Our data needs to be in a specific format to work with Sparks ALS Recomendation Algorithm
+* ALS is a Matrix Factorization approach. To implement a recommendation algorithm we decompose our large user/item matrix into lower dimensional user factors and item factors
+* To fully understand this model we need strong background in linear algebra
+* The intuitive uderstanding of a recommender system is the following:
+	* Imagine we have 3 customers: 1,2,3
+	* We also have some movies: A,B,C
+	* Coustomers 1 and 2 really enjoy movies A and B and rate them 5/5 stars
+	* 1 and 2 dislike movie C and give it a 1/5 star rating
+	* Customer 3 comes. he havent seen any movies yes. he sees movie a and likes it rates it 5/5
+	* What movie should we recommend? B or C?
+	* based of collaborative filtering we recommend movie B because users 1.2  also liked that along with movie A
+	* We use wisdom of the crowd
+* A content based system wouldn't need to take users into account
+* It would just group movies together based on feats (length,genre, actors, etc)
+* Often real recommendation systems combine both methods
+
+### Lecture 56 - Recommender System Code Along Project
+
+* we will use the movielend datasetand the ALS methods from Spark
+* we import and create a SparkSession
+* we import the models we wil use `from pyspark.ml.recommendation import ALS`
+* we also import a  Regression evaluator `from pyspark.ml.evaluation import RegressionEvaluator`
+* we import our data `data = spark.read.csv( 'movielens_ratings.csv', inferSchema=True, header=True)`
+* this is a stripped down dataset. for the actual dataset we would need a cluster and that would cost money
+* we visuzlize our dataset. it has movie id, movie rating and userId
+* movie lens has a second dataset that connects movie id with the actual movie
+* we see our dataset stats with .describe() it has 1500 entries (reviews), 100 movies and 30 users
+* we need to split our dfata to training and testing set as we want to evaluate our dataset in the end. `training,test = data.randomSplit([0.8,0.2])`
+* when subjectivity is involved recommendation systems are hard to get right
+* we create our als model. we can set many params in it. we use mostly defaults. also the lag needs 3 columns user, item and rating. in our case they are already there. `als = ALS(maxIter=5,regParam=0.01,userCol='userId',itemCol='movieId',rating='rating')`
+* we create our model by fitting in thee training data `model = als.fit(training)`
+* we get our predictions from the model passing int the test data `predictions = model.transform(test)`
+* we visualize our predictions dataframe. it has the 3 existing column of our test datafram + a predictions column. the results are pretty wierd. we get negative va lpredictions. as we treat the ratings as continuous vals we can get negative values. our results are pretty off
+* we create an evaluator to formally evaluate our model `evaluator = RegressionEvaluator(metricName='rmse', labelCol='rating',predictionCol='prediction')`
+* we get our rmse `rmse = evaluator.evaluate(predictions)` is is 1.88... 1.88 out of 5 is not good
+* we can blame our dataset for the error as it is very small for such a problem
+* how can we use the model on a fresh user. we selct a random user and extract movieid and user id columns for his ratings `single_user = test.filter(test['userid'] == 11).select(['movieid','userid'])`
+* we will now produce the prediction for these movies for the user. based on the rating we get in prediction we would recommend it to him or not `recommendations = model.transform(single_user)`
+* we sort the predictions AKA recommendsations in descending order `recommendations.orderBy('prediction', ascending=False).show()` so we would recommend him movie 18 and 19
+* in such systems a problem called cold start is how we treat a user that just enters the system . we tackle that by asking questions about his preferences or by trending most popular movies
+
+## Section 16 - Natural Language Processing
+
+### Lecture 57 - Introduction to natural Language Processing
+
+* 
