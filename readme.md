@@ -452,6 +452,25 @@ we check the table schema `output.printSchema()` we have the dataset as it was +
 * usually when i get really good metrics we double check our dataset
 * how we deploy our model? `unlabeled_data. = test_data.select('features')` has only feats so it is good to simulate input data. we do our predictions `predictions = lr_model.transform(unlabeled_data)` which has now the predicted labels col
 
+### Lecture 38 - Linear Regression Consulting Project
+
+* we ve been contacted by Hyundai Heavy Industies to help them build a predictive model for ships
+* they need our help to give accurate estimates on how many crew members a ship will require
+* they are selling ships to new customers and want us to create amodel and use it to predict how many crew members the ship will need
+* they provide us with a dataset with these feats:
+	* Ship Name
+	* Cruise Line
+	* Age (as of 2013)
+	* Tonnage (1000s of tons)
+	* passengers (100s)
+	* Length (100s of feet)
+	* cabinbs (100s)
+	* passenger density 
+	* Crew (100s)
+* Our job is to create a regression model that will help predict how many crew
+* we should use the feats we think will be useful to predict the value
+* cruise lines differ in acceptable crew counts so we should use it. we should use StringIndexer
+
 ## Section 12 - Logistic Regression
 
 ### Lecture 40 - Logistic Regression Theory and Reading
@@ -529,6 +548,18 @@ assembler = VectorAssembler(inputCols=['Pclass', 'SexVec', 'Age', 'SibSp', 'Parc
 * we instantiate it passing the actual col labels of our results df `my_eval = BinaryClassificationEvaluator(rawPredictionCol='prediction', labelCol='Survived')` prediction is the default coname for transform outpu and Survived the labels colname in our original data
 * we ge tthe metric using the evaluate() method `AUC = my_eval.evaluate(results)` (area under the curve) the val is 0.76 which needs improvement
 
+### Lecture 43 - Logistic Regression Consulting Project
+
+* we have been contacted by a top marketing agency to help them out with customer churn
+* we need to help them predict custiomer churn
+* a marketing agency has many coustomers that use thir service to produce ads for the clientcustomer websites
+* they noticed they have quite a bit of churn in clients (lose clients)
+* they currently randomly assign account managers, but want us to create a machine learning model that will help predict which customers will churn (stop buying the service) so thatt they can correctly assign the customers at risk an account manager
+* they have historical data
+* we have to create a classification algorithm that will help them classify whether or not a customer churned
+* our goal is to create a model that will accurately predict if the customer will churn
+* account manager is currently randomly assigned
+
 ## Section 13 - Decision Trees and Random Forests
 
 ### Lecture 45 - Tree Methods Theory and Reading
@@ -593,7 +624,7 @@ dtc_preds = dtc_model.transform(test_data)
 rfc_preds = rfc_model.transform(test_data)
 gbt_preds = gbt_model.transform(test_data)
 ```
-* the preds are dataframes containing the atual labels and predictions (labelwise are same) so we can run evaluator on them to get the metrics 9we donts even have to se t the columns as they are default
+* the preds are dataframes containing the actual labels and predictions (labelwise are same) so we can run evaluator on them to get the metrics. we dont even have to set the columns as they are default
 * we import the evaluator `from pyspark.ml.evaluation import MulticlassClassificationEvaluator`
 * we create an evaluator `acc_eval = MulticlassClassificationEvaluator(metricName='accuracy')` 
 ```
@@ -637,7 +668,7 @@ assembler = VectorAssembler(
 * we create the output using the assembler to transform the data `output = assembler.transform(data)`
 * we now have to make our categorical  label column a vector that MLlib can understand
 * we import the indexer `from pyspark.ml.feature import StringIndexer`
-* we create the indexer `StringIndexer(inputCol='Private',outputCol='Privateindex')`
+* we create the indexer `indexer = StringIndexer(inputCol='Private',outputCol='Privateindex')`
 * we get our output fixed with `output_fixed = indexer.fit(output).transform(output)`
 * we dont use pipeline as we dont have to repeat the process
 * we print out the output_fixed dfs schema. we still have the 2 string cols and the feature columns we should drop (we dont need to as we declare cols that are used in the model) `final_data = output_fixed.select('features'.'privateIndex')`
@@ -662,6 +693,17 @@ gbt_preds = gbt_model.transform(test_data)
 * we import the MulticlassClassificationEvaluator to get more eval metrics `acc_eval = MulticlassClassificationEvaluator(labelCol='PrivateIndex',metricName='accuracy')`
 * we get rfc accurace `rfc_acc = acc_eval.evaluate(rfc_preds)`
 
+### Lecture 48 - Random Forest Classifications Consulting Project
+
+* we been hired by purina to predict why some batches of their dog food spoil much sooner than intendent.
+* the dogs food company has not upgraded to the latest machinery meaning that the amounts of the five chemicals they are using very a lot. but which is the chemical with the strongest effect?
+* they mix a batch of preservative containing 	4 chemicals (a,b,d,c) and then is completed by a filler chemical
+* scientists believe that one of A<B<C<D chemicals is causing the problem but we have to figure out which
+* we will use Machine Learning with RF to find out which param had the most predictive power. thus finding the cause
+* we have to create a model and then find out how we can decide which chemical is the problem
+* the data look like this. Pres_A, Pres_B, Pres_C, Pres_D: ppercentage of preservative in the mix: Spoiled label if the dog batch food was spoiled
+* what we actually want is feature importance from the model 
+
 ## Section 14 - K-Means Clustering
 
 ### Lecture 50 K-means Clustering Theory and Reading
@@ -675,13 +717,14 @@ gbt_preds = gbt_model.transform(test_data)
 * so it comes down to domain knowledge to be able to interpret the clusters assigned
 * so maybe we have customer data and then cluster them into distinct groups. it will up to us to decide whjat the groups actually represent. soms dat is makkelijk som dat is echte moelijk.
 * eg we could cluster tumors in two groups (hoping to separate them  between benign and malignant)
-* but there is no guarantee the clusters will fall along these lines. it will just split into the mtwo most separable groups
+* but there is no guarantee the clusters will fall along these lines. it will just split into the two most separable groups
 * depending on the algo it might be up to us to decide beforehand how many clusters we expect to create
 * a lot of probs have no 100% correct approach or answer. that the nature of unsuperviosed learning
 * About K-Means Clustering we can see our notes from PythonDSMLBootcamp and ISLR book
 * pyspark does not support a plotting mechanism. we could use collect() and then plot the results with matplotlib or other visualization libraries
 * We should not take the elbow rule as a strict rule when choosing a K value
 * a lot of depends on the context of the situation (domain knowledge)
+* we will use ML to solve it but without the typical train/test workflow
 
 ### Lecture 51 - KMeans Clustering Documentation Example
 
@@ -718,7 +761,7 @@ gbt_preds = gbt_model.transform(test_data)
 * we now want to scale our data so we import the scaler `from pyspark.ml.feature import StandardScaler` it works like the assembler object `scaler = StandardScaler(inputCol='features', outputCol='scaledFeatures')` scaler accepts parameters on how we want to scale (withMean or withStd)
 * we now dtrain the scaler fitting our data on the scaler `scaler_model = scaler.fit(final_data)` and we transform our dataset using the scaler `final_data = scaler_model.transform(final_data)`
 * we view our dataset 	`final_data.head(1)` and it has all the inital cols + the vectorized and the scaled vectorized feats' there is not much difference with the unscaled vals
-* we aare now ready to work on our model
+* we are now ready to work on our model
 ```
 kmeans = KMeans(featuresCol='scaledFeatures',k=3)
 ```
@@ -726,6 +769,16 @@ kmeans = KMeans(featuresCol='scaledFeatures',k=3)
 * we print the wssse `print('WSSSE {}'.format(model.computeCost(final_data)))`
 * we get the cluster centers `centers = model.clusterCenters()` they apply to a 7dimensional space
 * we transform the data using the model to get the labels `model.transform(final_data).select('prediction').show()`
+
+### Lecture 53 - KMeans Clustering Consulting Project
+
+* a technology start-up in California needs our services
+* they ve been hacked and they need our help to find out about the hackers
+* the forensic engineers have grabbed valuable data about the hacks inclusding info about session time, locations, wpm typing speed etc
+* the forensic engineer relates what they have gathered so far. they have grabbed meta-data of each session that the hackers used to connect to their servers
+* the technology firm has 3 potential hackers that did the attack. they are certain of the first 2 but they aren't very sure if the third was involved orr not
+* they want us to figure out if the third suspect had anything to do with the attack or it was just 2 hackers.
+* the forensic engineer knows the hackers trade off attacks. they should each have roughly the same ammount of attacks
 
 ## Section 15
 
@@ -938,3 +991,84 @@ data_prep_pipe = Pipeline(stages=[ham_spam_to_num,tokenizer,stopremove,count_vec
 cleaner = data_prep_pipe.fit(data)
 clean_data = cleaner.transform(data)
 ```
+* we now strip the dataset of all nonwanted cols keeping only the ones we will use in the classification algorithm `clean_data = clean_data.select(['label','features'])`
+* we split our data `training,testing = clean_data.randomSplit([0.7,0.3])`
+* we fit our alg tto the data `spam_predictor = nb.fit(training)`
+* we transform our test data to get the results `test_results = spam_predictor.transform(testing)`
+* we use the multiclass evaluator to ge the accuracy metric
+```
+from pyspark.ml.evaluation import MulticlassClassificationEvaluator
+acc_eval = MulticlassClassificationEvaluator()
+acc = acc_eval.evaluate(test_results)
+```
+
+## Section 17 - Spark Streaming with Python
+
+### Lecture 61 - Introduction to Streaming with Spark
+
+* Spark Streamin is an extension of the core Spark API that enables scalable,high-throughput, fault-tolerant stream processing of live data streams
+* Data can be ingested from many sources like [Kafka](https://kafka.apache.org/), [Flume](https://flume.apache.org/), [Kinesis](https://aws.amazon.com/kinesis/) or TCP sockets
+* Data can be processes using complex algorithms expressed with high-level functions like map,reduce,join and window
+* so we get a data stream from a source and using Spark Streaming we perform ML on it outputing the results to a HDFS,DB or Dashboards
+* Internally Spark Streaming receives live input data streams and divides the data into batches, which are then processed by the Spark engine to generate the final stream of results in batches
+* we have: Input Data Stream => Spark Streaming => batches of input data => Spark Engine => batches of preocessed data
+* For this course we will first work through a simple streaming example
+* We will need to simultaneously use jupyter notebook and a terminal (to stream as input)for this
+* the easiest way to follow is using a local installation in a virtual box
+* after that we will do a twitter analysis project
+* to follow along we will need visualization libs and a twitter developers account
+* Realistically streaming through actual data sources (Kafka,Flume,Kinesis) cannot be shown in a single computer setting
+* if our project necessitates using these sources, Spark provides integration guides
+* not every version of ka source (e.g kafka) is available with a python API
+* [Structured Streaming](https://spark.apache.org/docs/latest/structured-streaming-programming-guide.html) uses normal spark sessions for streaming
+* it uses spark streaming on top of spark sql so we can use dataframe api. it's the way for streaming
+* each new data in the stream in a new row in an unbounded table (aka dataframe)
+* so the input data files in streaming are unbounded. also there are triggers when new data arrive
+
+* [Spark Streaming](https://spark.apache.org/docs/latest/streaming-programming-guide.html) is the most stable version
+* in next lecture we will do the quick example from the spark streaming docs   where we will use stremainbg context and spark context. 
+* spark context was the way to use spark before v2 and spark.sql and the dataframes and sparksession
+* Spark streaming supports MLlib and input from Dstreams and Receivers
+* Doc talks about advanced resources. all sources now have a python API
+
+### Lecture 62 - Spark Streaming Documentation Example
+
+* because we use Spark Streaming not Stuctured Streaming we need to use the older RDD syntax
+* this is because we have to use SparkContext instead of SparrkSession
+* we will build a very simpple app that connects to a local stream of data (a terminal) through a socket connection
+* it will then count the words for each line we type in
+* THe steps fo doing the streaming will be:
+	* Create a SparkContext
+	* Create a StreamingContext
+	* Create a Socket Text Stream
+	* Read in the lines as a DStream
+* THe steps for working with the data:
+	* Split the input line into a list of words
+	* Map each word to a tuple (word,1)
+	* THen group (reduce) the tuples by the word (key) and sum up the second argument
+	* that will then provide us with a word count in the form ('hello',3) for each line
+	* As a quick note, the RDD syntax relies heavily on lambda expressions
+* we open 2 terminals and a jupyter notebook in our remote instance (we use EC2 with 2 ssh terminals and a web based jupyter)
+* in the first terminal we run jupyter notebook and in the second we will do the streaming
+* we create a new notebook
+* we import SparkContext `from pyspark import SparkContext`
+* we import a StreamingContext `from pyspark.streaming import StreamingContext`
+* we create anew context specifying its name and that we will work with 2 local threads `sc = SparkContext("local[2]", "NetworkWordCount")`
+* we use the context to create a stremingcontext setting the stream interval to 1 (second) `ssc = StreamingContext(sc, 1)`
+* we use the streaming context to create a Dstream (socket) that will connect to a localhost port `lines =  ssc.socketTextStream('localhost':9999)`
+* we will use this line object to create alist of words using flatMap `words = lines.flatMap(lambda line: line.split(' '))`
+* with the list of words in hand we will now create the tuples with the counter set to 1 `pairs = words.map(lambda word: (word,1))`
+* with the pairs in hand we can now get our wordcounts `word_counts = pairs.reduceByKey(lambda num1,num2: num1+num2)` reduce by key finds tuples withsame key and performs an operation in their second element. its is common in RDD that tuples are common
+* we do prettyprint of our wordcounts `word_counts.pprint()`
+* we now go to our opent terminal an run `nc -lk 9999` openning a socket comm to port 9999. the terminal is now ready to accept input
+* to start the streaming context we do `ssc.start()`
+* now our notebook spits the rstreming input . when we write a sentence in the terminal and hiot enter it gets anaylzed by spark in rela time SWEET>>>
+
+### Lecture 63 0 Spark Streaming Twitter Project Part 1
+
+* now its time for our project.
+* we ll create asimple application that plots out the popylarity of tags associated with incoming tweets streamed live from Twitter
+* to do this we need to create a Twitter Developer Account to get our access codes
+* then we need to install the *twwepy* lib as well as matplotlib and seaborn for visualization
+* we go to [Devs Twitter][apps.twitter.com]
+* we sign in with our twitter account
