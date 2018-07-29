@@ -129,8 +129,69 @@ import pyspark
 
 ## Section 5 - Databricks Setup
 
+### Lecture 14 - Databricks Setup
+
+* databricks is a company that provides clusters that run on top of AWS and adds a convenience of having a Notebook System already set-up and the ability to quickly add files (from Amazon S3 or local computer)
+* it has a free community version that supports a 6GB cluster
+* it has its own storage format known as DBFS
+* this Table format needs to be accessed in aparticular way
+* we ll walk through how we can setup a Databricks account and how we can upload data and set it as DataFrame
+* Databricks offeres the fastest online setuo
+* we go to [Databricks](https://databricks.com/try-databricks)
+* we sign up for community edition
+* we get a link bty email
+* we login to dashboard
+* Databricks for data scientists has all we need
+* we create a cluster
+	* we give it a name
+	* we use spark 2.1
+	* on AWS
+* once cluster is ready we create a  new notebook
+* we `import pyspark` and shift+enter
+* to load data we click on table => create table 
+* we set the datasource
+* we upload our local file
+* we set table name
+* we set filetype 
+* column delimiter
+* we can preview table
+* we create the table
+* in notebook we set `df = sqlContext.sql('SELECT * FROM mytable')`
+* this is a normal sparq.sql dataframe
+
 ## Section 6 - AWS EMR Cluster Setup
 
+### Lecture 15 - AWS EMR Setup
+
+* if we want to quickly seup a cluster with a notebook interface AWS EMR is a good choice
+* its not FREE
+* we ll walk through setting the Zeppelin Notebook
+* we ll discuss security options
+* Zeppelin Notebook is a new environment that mimics Jupyter Notebook but was created for Big Data (Spark,Hadoop)
+* We ll look into Zeppelin notebooks and their docs and then go create an EMR
+* [Zeppelin](https://zeppelin.apache.org/)
+* it supports many languages also ElasticSearch
+* it is designed primary for spark
+* In AWS we search for EMR
+* we *Create CLuster*
+	* we name it
+	* associate it to an S3 folder (optional)
+	* apps => SPark +zeppelin
+	* hardware => various options
+	* num of instances
+	* set a key pair (EC2)
+* Create key pair  => download it and store it
+* we need to modify it to use it in ssh
+* We create the cluster (takes time)
+* we go to security groups => elasticmapreduce master -> inbound - edit new rule -<> ssh -> myip
+* add rule 8890 -> myip pass our ip
+* we can ssh using public dns link
+* we han use dnslink:8890 on browser and see the zeppelin notebook 
+* it like jupyter notebook for big data
+* we set default interpreter to spark
+* in first cell we run `%pyspark` (it gets copied in all cells to interpret python as spark expects scala code by default)
+* the code is the same as in the course (pyspark)
+* to load files from s2 `df = spark.read.csv('s3n://Myaccesskey:secretkey@bucketname/myfile.csv')`
 ## Section 7 - Python Crash Course
 
 * have done it in PYthon DSML Bootcamp. Exercices are the same.
